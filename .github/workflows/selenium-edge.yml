@@ -1,0 +1,43 @@
+name: Selenium Edge Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  run-selenium:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Microsoft Edge
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/keyrings/microsoft.asc > /dev/null
+          sudo chmod go+r /etc/apt/keyrings/microsoft.asc
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.asc] https://packages.microsoft.com/repos/edge stable main" | sudo tee /etc/apt/sources.list.d/microsoft-edge.list
+          sudo apt-get update
+          sudo apt-get install -y microsoft-edge-stable
+
+      - name: Install Edge WebDriver
+        run: |
+          EDGE_VERSION=$(microsoft-edge-stable --version | awk '{print $3}')
+          DRIVER_URL="https://msedgedriver.azureedge.net/${EDGE_VERSION}/edgedriver_linux64.zip"
+          wget -O edgedriver.zip $DRIVER_URL
+          unzip edgedriver.zip
+          sudo mv msedgedriver /usr/local/bin/msedgedriver
+          sudo chmod +x /usr/local/bin/msedgedriver
+
+      - name: Run Tests
+        run: mvn clean test
